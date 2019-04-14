@@ -12,7 +12,14 @@ import cv2
 import xml.etree.ElementTree
 
 class SeedDataset(torch.utils.data.Dataset):
-    CLASSES = (
+    CLASSES_STRAT1 = (
+        "__background__ ",
+        "germinated",
+        "non-germinated"
+        # "seed",
+        # "radical"
+    )
+    CLASSES_STRAT2 = (
         "__background__ ",
         # "germinated",
         # "non-germinated"
@@ -20,7 +27,7 @@ class SeedDataset(torch.utils.data.Dataset):
         "radical"
     )
 
-    def __init__(self, root_dir, split="", transforms=None):
+    def __init__(self, root_dir, split="", strategy = 1, transforms=None):
         # as you would do normally
         self.split = split
         self.nb_data = 93
@@ -38,8 +45,12 @@ class SeedDataset(torch.utils.data.Dataset):
             self.number_sample = self.nb_data
 
         self.root_dir = root_dir
+        self.strategy = strategy
         self.transforms = transforms
-        cls = SeedDataset.CLASSES
+        if strategy == 1:    
+            cls = SeedDataset.CLASSES_STRAT1
+        else:
+             cls = SeedDataset.CLASSES_STRAT2
         self.class_to_ind = dict(zip(cls, range(len(cls))))
 
 
@@ -52,38 +63,38 @@ class SeedDataset(torch.utils.data.Dataset):
         num = idx  + self.starting_sample
         # print(idx)
         labels = []
-       
-        image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
-        xml_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.xml'    
-        image = cv2.imread(image_name)
-        # cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        root = xml.etree.ElementTree.parse(xml_name).getroot()
-        objects = root.findall('object')
-        b_boxes_xml = [obj.find('bndbox') for obj in objects]
-        labels_xml = [obj.find('name').text for obj in objects]
-        boxes = [(int(box.find('xmin').text), int(box.find('ymin').text), int(box.find('xmax').text), int(box.find('ymax').text)) for box in b_boxes_xml] 
-        labels = [1 if b == 'germinated' else 2 for b in  labels_xml]
+        if self.strategy == 1:
+            image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
+            xml_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.xml'    
+            image = cv2.imread(image_name)
+            # cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            root = xml.etree.ElementTree.parse(xml_name).getroot()
+            objects = root.findall('object')
+            b_boxes_xml = [obj.find('bndbox') for obj in objects]
+            labels_xml = [obj.find('name').text for obj in objects]
+            boxes = [(int(box.find('xmin').text), int(box.find('ymin').text), int(box.find('xmax').text), int(box.find('ymax').text)) for box in b_boxes_xml] 
+            labels = [1 if b == 'germinated' else 2 for b in  labels_xml]
 
+        else:
+            image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.jpg'
+            xml_name_seed = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}_s.xml'
+            xml_name_rad = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.xml'
+            image = cv2.imread(image_name)
+            # cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            root_seed = xml.etree.ElementTree.parse(xml_name_seed).getroot()
+            objects_seed = root_seed.findall('object')
 
-        # image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.jpg'
-        # xml_name_seed = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}_s.xml'
-        # xml_name_rad = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.xml'
-        # image = cv2.imread(image_name)
-        # # cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # root_seed = xml.etree.ElementTree.parse(xml_name_seed).getroot()
-        # objects_seed = root_seed.findall('object')
-
-        # root_rad = xml.etree.ElementTree.parse(xml_name_rad).getroot()
-        # objects_rad = root_rad.findall('object')
-        # objects = objects_seed +  objects_rad 
-        # labels_xml = [obj.find('name').text for obj in objects]
-        # # labels_xml = labels_xml + labels_xml_rad 
-        # b_boxes_xml = [obj.find('bndbox') for obj in objects]
-        # boxes = [(int(box.find('xmin').text), int(box.find('ymin').text), int(box.find('xmax').text), int(box.find('ymax').text)) for box in b_boxes_xml] 
-        # labels = [1 if b == 'seed' else 2 for b in  labels_xml]
-        # print(labels)
+            root_rad = xml.etree.ElementTree.parse(xml_name_rad).getroot()
+            objects_rad = root_rad.findall('object')
+            objects = objects_seed +  objects_rad 
+            labels_xml = [obj.find('name').text for obj in objects]
+            # labels_xml = labels_xml + labels_xml_rad 
+            b_boxes_xml = [obj.find('bndbox') for obj in objects]
+            boxes = [(int(box.find('xmin').text), int(box.find('ymin').text), int(box.find('xmax').text), int(box.find('ymax').text)) for box in b_boxes_xml] 
+            labels = [1 if b == 'seed' else 2 for b in  labels_xml]
+            # print(labels)
 
 
 
@@ -127,9 +138,14 @@ class SeedDataset(torch.utils.data.Dataset):
         # of the image, as it can be more efficient than loading the
         # image from disk
         num  = idx + 1
-        image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
+        if self.strategy == 1:
+            image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
+        else:
+            image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.jpg'
         image = Image.open(image_name).convert('RGB')
         return {"height": image.size[1], "width": image.size[0]}
 
     def map_class_id_to_class_name(self, class_id):
-        return SeedDataset.CLASSES[class_id]
+        if self.strategy == 1:    
+             return SeedDataset.CLASSES_STRAT1[class_id]
+        return SeedDataset.CLASSES_STRAT2[class_id]

@@ -10,7 +10,7 @@ DATASETS:
   TRAIN: ("seed_train",)
   VALIDATE: ("seed_train","seed_val","seed_test")
   TEST: ("seed_train","seed_val","seed_test")
-  # STRATEGY: 1
+  STRATEGY: 1
 DATALOADER: 
   SIZE_DIVISIBILITY: 1
 SOLVER:
