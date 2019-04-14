@@ -40,7 +40,7 @@ def get_extensions():
         ]
 
     sources = [os.path.join(extensions_dir, s) for s in sources]
-
+    # print(torch.cuda.is_available()) 
     include_dirs = [extensions_dir]
 
     ext_modules = [

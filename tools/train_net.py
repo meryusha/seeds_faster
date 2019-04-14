@@ -116,7 +116,7 @@ def main():
         metavar="FILE",
         help="path to config file",
         type=str,
-    )
+    )  
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument(
         "--skip-test",
@@ -130,6 +130,14 @@ def main():
         default=None,
         nargs=argparse.REMAINDER,
     )
+
+      #added args for Seed detection 2 strategies
+    #  parser.add_argument(
+    #     "--strategy",
+    #     default=1,
+    #     # metavar="FILE",
+    #     help="1 for strat 1 and 2 for strat 2",
+    # )
 
     args = parser.parse_args()
 
@@ -145,6 +153,7 @@ def main():
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    # cfg.merge_from_list(args.strategy)
     cfg.freeze()
 
     output_dir = cfg.OUTPUT_DIR

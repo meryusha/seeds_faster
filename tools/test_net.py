@@ -26,6 +26,7 @@ def main():
         metavar="FILE",
         help="path to config file",
     )
+  
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument(
         "opts",
@@ -33,7 +34,13 @@ def main():
         default=None,
         nargs=argparse.REMAINDER,
     )
-
+    #added args for Seed detection 2 strategies
+    #   parser.add_argument(
+    #     "--strategy",
+    #     default=1,
+    #     # metavar="FILE",
+    #     help="1 for strat 1 and 2 for strat 2",
+    # )
     args = parser.parse_args()
 
     num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
@@ -48,7 +55,9 @@ def main():
 
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    # cfg.merge_from_list(args.strategy)
     cfg.freeze()
+
 
     save_dir = ""
     logger = setup_logger("maskrcnn_benchmark", save_dir, get_rank())

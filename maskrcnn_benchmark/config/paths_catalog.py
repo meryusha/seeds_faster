@@ -103,7 +103,19 @@ class DatasetCatalog(object):
         "cityscapes_fine_instanceonly_seg_test_cocostyle": {
             "img_dir": "cityscapes/images",
             "ann_file": "cityscapes/annotations/instancesonly_filtered_gtFine_test.json"
-        }
+        },
+        "seed_train": {
+           "data_dir": "/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds",
+            "split": "train"
+        },
+        "seed_val": {
+             "data_dir": "/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds",
+            "split": "validate"
+        },
+        "seed_test": {
+             "data_dir": "/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds",
+            "split": "test"
+        },
     }
 
     @staticmethod
@@ -128,6 +140,17 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="PascalVOCDataset",
+                args=args,
+            )
+        elif "seed" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                root_dir=attrs["data_dir"],
+                split=attrs["split"]
+            )
+            return dict(
+                factory="SeedDataset",
                 args=args,
             )
         raise RuntimeError("Dataset not available: {}".format(name))

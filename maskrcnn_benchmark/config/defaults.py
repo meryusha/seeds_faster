@@ -421,3 +421,12 @@ _C.TEST.DETECTIONS_PER_IMG = 100
 _C.OUTPUT_DIR = "."
 
 _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
+
+# ---------------------------------------------------------------------------- #
+# Additional options
+# ---------------------------------------------------------------------------- #
+_C.DATASETS.VALIDATE = ()
+
+_C.SOLVER.REDUCE_ON_PLATEAU = False
+
+# _C.DATASETS.STRATEGY = 1
