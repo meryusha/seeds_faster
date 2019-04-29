@@ -1,10 +1,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
+import cv2
+import numpy as np
 
 # transpose
 FLIP_LEFT_RIGHT = 0
 FLIP_TOP_BOTTOM = 1
-
+ROTATE = 2
 
 class BoxList(object):
     """
@@ -126,7 +128,7 @@ class BoxList(object):
 
         return bbox.convert(self.mode)
 
-    def transpose(self, method):
+    def transpose(self, method, angle = None):
         """
         Transpose bounding box (flip or rotate in 90 degree steps)
         :param method: One of :py:attr:`PIL.Image.FLIP_LEFT_RIGHT`,
@@ -134,10 +136,10 @@ class BoxList(object):
           :py:attr:`PIL.Image.ROTATE_180`, :py:attr:`PIL.Image.ROTATE_270`,
           :py:attr:`PIL.Image.TRANSPOSE` or :py:attr:`PIL.Image.TRANSVERSE`.
         """
-        if method not in (FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM):
-            raise NotImplementedError(
-                "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented"
-            )
+        # if method not in (FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM):
+        #     raise NotImplementedError(
+        #         "Only FLIP_LEFT_RIGHT and FLIP_TOP_BOTTOM implemented"
+        #     )
 
         image_width, image_height = self.size
         xmin, ymin, xmax, ymax = self._split_into_xyxy()
@@ -152,6 +154,26 @@ class BoxList(object):
             transposed_xmax = xmax
             transposed_ymin = image_height - ymax
             transposed_ymax = image_height - ymin
+        elif method == ROTATE:
+            if angle is not None:
+                print(angle)
+                if angle == 90:
+                    h_mid = image_height // 2
+                    w_mid = image_width // 2
+                    M = cv2.getRotationMatrix2D((h_mid, w_mid),90,1)
+                    corners = np.hstack((xmin,ymin,xmax,ymax,xmin,ymax,xmax,ymin))
+                    corners = corners.reshape(-1,2)
+                    corners = np.hstack((corners, np.ones((corners.shape[0],1), dtype = type(corners[0][0]))))
+        
+                    calculated = np.dot(M,corners.T).T   
+                    calculated = calculated.reshape(-1,8)
+#                   print(calculated.shape)
+                    x_ = calculated[:,[0,2,4,6]]
+                    y_ = calculated[:,[1,3,5,7]]
+                    transposed_xmin = np.min(x_,1).reshape(-1,1)
+                    transposed_xmax = np.max(x_,1).reshape(-1,1)
+                    transposed_ymin = np.min(y_,1).reshape(-1,1)
+                    transposed_ymax = np.max(y_,1).reshape(-1,1)
 
         transposed_boxes = torch.cat(
             (transposed_xmin, transposed_ymin, transposed_xmax, transposed_ymax), dim=-1

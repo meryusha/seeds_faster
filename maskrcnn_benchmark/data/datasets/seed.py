@@ -30,7 +30,7 @@ class SeedDataset(torch.utils.data.Dataset):
     def __init__(self, root_dir, split="", strategy = 1, transforms=None):
         # as you would do normally
         self.split = split
-        self.nb_data = 93
+        self.nb_data = 127
         if ("train".upper() in self.split.upper()):
             self.starting_sample = 1
             self.number_sample = int( np.floor(self.nb_data * 0.6) )
@@ -39,7 +39,8 @@ class SeedDataset(torch.utils.data.Dataset):
             self.number_sample = int(np.floor(self.nb_data * 0.2))
         elif ("test".upper() in self.split.upper()):
             self.starting_sample = int(np.floor(self.nb_data * 0.8))
-            self.number_sample = int(np.floor(self.nb_data * 0.2))
+            # self.number_sample = int(np.floor(self.nb_data * 0.2))
+            self.number_sample = self.nb_data - self.starting_sample 
         else:
             self.starting_sample = 1
             self.number_sample = self.nb_data
@@ -61,7 +62,7 @@ class SeedDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
 
         num = idx  + self.starting_sample
-        # print(idx)
+        print(idx)
         labels = []
         if self.strategy == 1:
             image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
@@ -132,6 +133,9 @@ class SeedDataset(torch.utils.data.Dataset):
         _, boxlist, _ = self[index]                          
         return boxlist
 
+    def get_strategy(self):
+        return self.strategy
+        
     def get_img_info(self, idx):
         # get img_height and img_width. This is used if
         # we want to split the batches according to the aspect ratio

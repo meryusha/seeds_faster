@@ -30,8 +30,10 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
         gt_boxlists.append(gt_boxlist)
         # print("gt_boxlist:", gt_boxlist)
         # print("gt_boxlist:", gt_boxlist.bbox)
-        np.save(os.path.join(output_folder, f"{image_id}_box_strat2.npy"), prediction.bbox.numpy())
-        np.save(os.path.join(output_folder, f"{image_id}_box_strat2_gt.npy"), gt_boxlist.bbox.numpy())
+        np.save(os.path.join(output_folder, f"{image_id}_box_strat{dataset.get_strategy()}.npy"), prediction.bbox.numpy())
+        np.save(os.path.join(output_folder, f"{image_id}_label_strat{dataset.get_strategy()}.npy"), prediction.get_field("labels").numpy())
+        np.save(os.path.join(output_folder, f"{image_id}_score_strat{dataset.get_strategy()}.npy"), prediction.get_field("scores").numpy())
+        # np.save(os.path.join(output_folder, f"{image_id}_box_strat2_gt.npy"), gt_boxlist.bbox.numpy())
         # print(prediction.bbox, file = open(os.path.join(output_folder, f"{image_id}_box_strat2.txt"), "w") )
         # print(gt_boxlist.bbox, file = open(os.path.join(output_folder, f"{image_id}_box_strat2_gt.txt"), "w") )
 
