@@ -33,10 +33,10 @@ class SeedDataset(torch.utils.data.Dataset):
         self.nb_data = 127
         if ("train".upper() in self.split.upper()):
             self.starting_sample = 1
-            self.number_sample = int( np.floor(self.nb_data * 0.6) )
-        elif ("val".upper() in self.split.upper()):
-            self.starting_sample = int( np.floor(self.nb_data * 0.6) )
-            self.number_sample = int(np.floor(self.nb_data * 0.2))
+            self.number_sample = int( np.floor(self.nb_data * 0.8) )
+        # elif ("val".upper() in self.split.upper()):
+        #     self.starting_sample = int( np.floor(self.nb_data * 0.6) )
+        #     self.number_sample = int(np.floor(self.nb_data * 0.2))
         elif ("test".upper() in self.split.upper()):
             self.starting_sample = int(np.floor(self.nb_data * 0.8))
             # self.number_sample = int(np.floor(self.nb_data * 0.2))
@@ -62,7 +62,7 @@ class SeedDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
 
         num = idx  + self.starting_sample
-        print(idx)
+        # print(idx)
         labels = []
         if self.strategy == 1:
             image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'

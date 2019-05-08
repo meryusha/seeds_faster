@@ -8,8 +8,8 @@ MODEL:
     NUM_CLASSES: 3
 DATASETS:
   TRAIN: ("seed_train",)
-  VALIDATE: ("seed_train","seed_val","seed_test")
-  TEST: ("seed_train","seed_val","seed_test")
+  # VALIDATE: ("seed_train","seed_val","seed_test")
+  TEST: ("seed_train","seed_test")
   STRATEGY: 2
 DATALOADER: 
   SIZE_DIVISIBILITY: 1
@@ -17,7 +17,7 @@ SOLVER:
   BASE_LR: 0.01
   WEIGHT_DECAY: 0.0001
   STEPS: (24000, 32000)
-  MAX_ITER: 25000
+  MAX_ITER: 20000
   CHECKPOINT_PERIOD: 100
   IMS_PER_BATCH: 2
 TEST:
