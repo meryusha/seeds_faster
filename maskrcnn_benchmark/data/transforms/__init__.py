@@ -5,5 +5,5 @@ from .transforms import RandomHorizontalFlip
 from .transforms import ToTensor
 from .transforms import Normalize
 from .transforms import RandomVerticalFlip
-from .transforms import RandomRotation
+# from .transforms import RandomRotation
 from .build import build_transforms

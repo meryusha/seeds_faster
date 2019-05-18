@@ -154,26 +154,26 @@ class BoxList(object):
             transposed_xmax = xmax
             transposed_ymin = image_height - ymax
             transposed_ymax = image_height - ymin
-        elif method == ROTATE:
-            if angle is not None:
-                print(angle)
-                if angle == 90:
-                    h_mid = image_height // 2
-                    w_mid = image_width // 2
-                    M = cv2.getRotationMatrix2D((h_mid, w_mid),90,1)
-                    corners = np.hstack((xmin,ymin,xmax,ymax,xmin,ymax,xmax,ymin))
-                    corners = corners.reshape(-1,2)
-                    corners = np.hstack((corners, np.ones((corners.shape[0],1), dtype = type(corners[0][0]))))
+#         elif method == ROTATE:
+#             if angle is not None:
+#                 print(angle)
+#                 if angle == 90:
+#                     h_mid = image_height // 2
+#                     w_mid = image_width // 2
+#                     M = cv2.getRotationMatrix2D((h_mid, w_mid),90,1)
+#                     corners = np.hstack((xmin,ymin,xmax,ymax,xmin,ymax,xmax,ymin))
+#                     corners = corners.reshape(-1,2)
+#                     corners = np.hstack((corners, np.ones((corners.shape[0],1), dtype = type(corners[0][0]))))
         
-                    calculated = np.dot(M,corners.T).T   
-                    calculated = calculated.reshape(-1,8)
-#                   print(calculated.shape)
-                    x_ = calculated[:,[0,2,4,6]]
-                    y_ = calculated[:,[1,3,5,7]]
-                    transposed_xmin = np.min(x_,1).reshape(-1,1)
-                    transposed_xmax = np.max(x_,1).reshape(-1,1)
-                    transposed_ymin = np.min(y_,1).reshape(-1,1)
-                    transposed_ymax = np.max(y_,1).reshape(-1,1)
+#                     calculated = np.dot(M,corners.T).T   
+#                     calculated = calculated.reshape(-1,8)
+# #                   print(calculated.shape)
+#                     x_ = calculated[:,[0,2,4,6]]
+#                     y_ = calculated[:,[1,3,5,7]]
+#                     transposed_xmin = np.min(x_,1).reshape(-1,1)
+#                     transposed_xmax = np.max(x_,1).reshape(-1,1)
+#                     transposed_ymin = np.min(y_,1).reshape(-1,1)
+#                     transposed_ymax = np.max(y_,1).reshape(-1,1)
 
         transposed_boxes = torch.cat(
             (transposed_xmin, transposed_ymin, transposed_xmax, transposed_ymax), dim=-1

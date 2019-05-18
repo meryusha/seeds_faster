@@ -83,15 +83,15 @@ class RandomVerticalFlip(object):
             target = target.transpose(1)
         return image, target
 
-class RandomRotation(object):
-    def __init__(self, prob=0.3):
-        self.prob = prob
+# class RandomRotation(object):
+#     def __init__(self, prob=0.3):
+#         self.prob = prob
 
-    def __call__(self, image, target):
-        if random.random() < self.prob:
-            image = F.rotate(image, 90)
-            target = target.transpose(2, 90)
-        return image, target
+#     def __call__(self, image, target):
+#         if random.random() < self.prob:
+#             image = F.rotate(image, 90)
+#             target = target.transpose(2, 90)
+#         return image, target
 
 class ToTensor(object):
     def __call__(self, image, target):

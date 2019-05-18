@@ -14,12 +14,15 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
     # for the user to choose
     pred_boxlists = []
     gt_boxlists = []
+    stats = np.zeros(shape =(len(predictions), 4) )
     for image_id, prediction in enumerate(predictions):
         img_info = dataset.get_img_info(image_id)
         if len(prediction) == 0:
             continue
         image_width = img_info["width"]
         image_height = img_info["height"]
+        # id = img_info['id']
+        id = 0
         prediction = prediction.resize((image_width, image_height))
         pred_boxlists.append(prediction)
         # print("prediction:", prediction)
@@ -30,17 +33,24 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
         gt_boxlists.append(gt_boxlist)
         # print("gt_boxlist:", gt_boxlist)
         # print("gt_boxlist:", gt_boxlist.bbox)
-        np.save(os.path.join(output_folder, f"{image_id}_box_strat{dataset.get_strategy()}.npy"), prediction.bbox.numpy())
-        np.save(os.path.join(output_folder, f"{image_id}_label_strat{dataset.get_strategy()}.npy"), prediction.get_field("labels").numpy())
-        np.save(os.path.join(output_folder, f"{image_id}_score_strat{dataset.get_strategy()}.npy"), prediction.get_field("scores").numpy())
-        # np.save(os.path.join(output_folder, f"{image_id}_box_strat2_gt.npy"), gt_boxlist.bbox.numpy())
-        # print(prediction.bbox, file = open(os.path.join(output_folder, f"{image_id}_box_strat2.txt"), "w") )
-        # print(gt_boxlist.bbox, file = open(os.path.join(output_folder, f"{image_id}_box_strat2_gt.txt"), "w") )
+        stats[image_id:] = count(gt_boxlist, prediction)
+        
+        if output_folder:
+            np.save(os.path.join(output_folder, f"{id}_box_strat{dataset.get_strategy()}.npy"), prediction.bbox.numpy())
+            np.save(os.path.join(output_folder, f"{id}_label_strat{dataset.get_strategy()}.npy"), prediction.get_field("labels").numpy())
+            np.save(os.path.join(output_folder, f"{id}_score_strat{dataset.get_strategy()}.npy"), prediction.get_field("scores").numpy())
+            
+    error_seed = np.mean(np.abs(np.divide((stats[:, 1] - stats[:, 0]), stats[:, 1])))
+    error_rad = np.mean(np.abs(np.divide((stats[:, 3] - stats[:, 2]),  stats[:, 3])))
 
+    if output_folder:
+        np.save(os.path.join(output_folder, f"error_seed_strat{dataset.get_strategy()}.npy"), error_seed)
+        np.save(os.path.join(output_folder, f"error_radical_strat{dataset.get_strategy()}.npy"), error_rad)
+    
     result = eval_detection_seed(
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
-        iou_thresh=0.5,
+        iou_thresh=0.4,
         use_07_metric=True,
     )
     result_str = "mAP: {:.4f}\n".format(result["map"])
@@ -54,7 +64,7 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
     if output_folder:
         with open(os.path.join(output_folder, "result.txt"), "w") as fid:
             fid.write(result_str)
-    return result
+    return result["map"], error_seed, error_rad
 
 
 def eval_detection_seed(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):
@@ -67,6 +77,8 @@ def eval_detection_seed(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metri
     Returns:
         dict represents the results
     """
+    # print(len(gt_boxlists) , 'gt')
+    # print(len(pred_boxlists) , 'pred')
     assert len(gt_boxlists) == len(
         pred_boxlists
     ), "Length of gt and pred lists need to be same."
@@ -75,6 +87,19 @@ def eval_detection_seed(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metri
     )
     ap = calc_detection_seed_ap(prec, rec, use_07_metric=use_07_metric)
     return {"ap": ap, "map": np.nanmean(ap)}
+
+#NEW : to count wrong guesses
+#provide as np array
+def count(target, prediction):
+    gt_labels = target.get_field("labels").numpy()
+    pred_labels = prediction.get_field("labels").numpy()
+    num_germ_or_seed_gt = np.sum(np.where(gt_labels  == 1, 1, 0))
+    num_nongerm_or_radical_gt = np.sum(np.where(gt_labels  == 2, 1, 0))   
+    num_germ_or_seed_pr = np.sum(np.where(pred_labels == 1, 1, 0))
+    num_nongerm_or_radical_pr = np.sum(np.where(pred_labels == 2, 1, 0))
+    stats = [num_germ_or_seed_pr, num_germ_or_seed_gt, num_nongerm_or_radical_pr,  num_nongerm_or_radical_gt]
+    print(stats)
+    return stats
 
 
 def calc_detection_seed_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):

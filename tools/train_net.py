@@ -58,7 +58,7 @@ def train(cfg, local_rank, distributed):
         is_train=True,
         is_distributed=distributed,
         start_iter=arguments["iteration"],
-    )
+    )   
 
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
 
@@ -70,7 +70,7 @@ def train(cfg, local_rank, distributed):
         checkpointer,
         device,
         checkpoint_period,
-        arguments,
+        arguments, cfg, 
     )
 
     return model
