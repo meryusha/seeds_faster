@@ -9,14 +9,16 @@ from maskrcnn_benchmark.utils.env import setup_environment  # noqa F401 isort:sk
 
 import argparse
 import os
-
+import numpy as np
 import torch
 from maskrcnn_benchmark.config import cfg
 from maskrcnn_benchmark.data import make_data_loader
+from maskrcnn_benchmark.data import make_data_loader_AL
 from maskrcnn_benchmark.solver import make_lr_scheduler
 from maskrcnn_benchmark.solver import make_optimizer
 from maskrcnn_benchmark.engine.inference import inference
 from maskrcnn_benchmark.engine.trainer import do_train
+from maskrcnn_benchmark.engine.trainer import do_train_AL
 from maskrcnn_benchmark.modeling.detector import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
@@ -26,7 +28,7 @@ from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
 
-def train(cfg, local_rank, distributed):
+def train(cfg, local_rank, distributed, AL_mode = False):
     model = build_detection_model(cfg)
     device = torch.device(cfg.MODEL.DEVICE)
     model.to(device)
@@ -53,25 +55,45 @@ def train(cfg, local_rank, distributed):
     extra_checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT)
     arguments.update(extra_checkpoint_data)
 
-    data_loader = make_data_loader(
-        cfg,
-        is_train=True,
-        is_distributed=distributed,
-        start_iter=arguments["iteration"],
-    )   
 
     checkpoint_period = cfg.SOLVER.CHECKPOINT_PERIOD
-
-    do_train(
-        model,
-        data_loader,
-        optimizer,
-        scheduler,
-        checkpointer,
-        device,
-        checkpoint_period,
-        arguments, cfg, 
-    )
+    AL_Passive = False
+    if AL_mode:
+        indices = np.arange(10)
+        data_loader = make_data_loader_AL(
+            cfg,
+            is_train=True,
+            is_distributed=distributed,
+            start_iter=arguments["iteration"], indices = indices, is_passive =  AL_Passive,
+    )   
+        do_train_AL(
+            model,
+            data_loader,
+            optimizer,
+            scheduler,
+            checkpointer,
+            device,
+            checkpoint_period,
+            arguments, cfg,
+            indices = indices, is_passive =  AL_Passive,
+        )
+    else:
+        data_loader = make_data_loader(
+            cfg,
+            is_train=True,
+            is_distributed=distributed,
+            start_iter=arguments["iteration"],
+    )  
+        do_train(
+            model,
+            data_loader,
+            optimizer,
+            scheduler,
+            checkpointer,
+            device,
+            checkpoint_period,
+            arguments, cfg, 
+        )
 
     return model
 
@@ -131,13 +153,13 @@ def main():
         nargs=argparse.REMAINDER,
     )
 
-      #added args for Seed detection 2 strategies
-    #  parser.add_argument(
-    #     "--strategy",
-    #     default=1,
-    #     # metavar="FILE",
-    #     help="1 for strat 1 and 2 for strat 2",
-    # )
+    #   added for active learning
+    parser.add_argument(
+        "--active-ler",
+        dest="active_ler",
+        help="Active learning mode",
+        action="store_true", 
+    )
 
     args = parser.parse_args()
 
@@ -173,10 +195,18 @@ def main():
         logger.info(config_str)
     logger.info("Running with config:\n{}".format(cfg))
 
-    model = train(cfg, args.local_rank, args.distributed)
+    ##Added for AL
+    AL_mode = False
+    if args.active_ler:
+        AL_mode = True
+    # #
+
+    model = train(cfg, args.local_rank, args.distributed, AL_mode)
 
     if not args.skip_test:
         run_test(cfg, model, args.distributed)
+
+   
 
 
 if __name__ == "__main__":

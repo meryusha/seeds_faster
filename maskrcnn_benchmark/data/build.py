@@ -2,7 +2,7 @@
 import bisect
 import copy
 import logging
-
+import numpy as np
 import torch.utils.data
 from maskrcnn_benchmark.utils.comm import get_world_size
 from maskrcnn_benchmark.utils.imports import import_file
@@ -14,7 +14,7 @@ from .collate_batch import BatchCollator
 from .transforms import build_transforms
 
 
-def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, strategy = 1):
+def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, strategy = 1, indices = None):
     """
     Arguments:
         dataset_list (list[str]): Contains the names of the datasets, i.e.,
@@ -29,6 +29,7 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, stra
             "dataset_list should be a list of strings, got {}".format(dataset_list)
         )
     datasets = []
+   
     for dataset_name in dataset_list:
         data = dataset_catalog.get(dataset_name)
         factory = getattr(D, data["factory"])
@@ -41,9 +42,11 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, stra
             args["use_difficult"] = not is_train
         if data["factory"] == "SeedDataset":
             args["strategy"] = strategy
+            args["indices"] = indices
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)
+        # print("AT BUILD DATASET", dataset.get_indices())
         datasets.append(dataset)
 
     # for testing, return a list of datasets
@@ -130,16 +133,16 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
 
     if images_per_gpu > 1:
         logger = logging.getLogger(__name__)
-        logger.warning(
-            "When using more than one image per GPU you may encounter "
-            "an out-of-memory (OOM) error if your GPU does not have "
-            "sufficient memory. If this happens, you can reduce "
-            "SOLVER.IMS_PER_BATCH (for training) or "
-            "TEST.IMS_PER_BATCH (for inference). For training, you must "
-            "also adjust the learning rate and schedule length according "
-            "to the linear scaling rule. See for example: "
-            "https://github.com/facebookresearch/Detectron/blob/master/configs/getting_started/tutorial_1gpu_e2e_faster_rcnn_R-50-FPN.yaml#L14"
-        )
+        # logger.warning(
+        #     "When using more than one image per GPU you may encounter "
+        #     "an out-of-memory (OOM) error if your GPU does not have "
+        #     "sufficient memory. If this happens, you can reduce "
+        #     "SOLVER.IMS_PER_BATCH (for training) or "
+        #     "TEST.IMS_PER_BATCH (for inference). For training, you must "
+        #     "also adjust the learning rate and schedule length according "
+        #     "to the linear scaling rule. See for example: "
+        #     "https://github.com/facebookresearch/Detectron/blob/master/configs/getting_started/tutorial_1gpu_e2e_faster_rcnn_R-50-FPN.yaml#L14"
+        # )
 
     # group images which have similar aspect ratio. In this case, we only
     # group in two cases: those with width / height > 1, and the other way around,
@@ -159,6 +162,86 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0):
     data_loaders = []
     for dataset in datasets:
         sampler = make_data_sampler(dataset, shuffle, is_distributed)
+        batch_sampler = make_batch_data_sampler(
+            dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
+        )
+        collator = BatchCollator(cfg.DATALOADER.SIZE_DIVISIBILITY)
+        num_workers = cfg.DATALOADER.NUM_WORKERS
+        data_loader = torch.utils.data.DataLoader(
+            dataset,
+            num_workers=num_workers,
+            batch_sampler=batch_sampler,
+            collate_fn=collator,
+        )
+        data_loaders.append(data_loader)
+    if is_train:
+        # during training, a single (possibly concatenated) data_loader is returned
+        assert len(data_loaders) == 1
+        return data_loaders[0]
+    return data_loaders
+
+
+def make_data_loader_AL(cfg, is_train=True, is_distributed=False, start_iter=0, indices = None, is_passive = True):
+    num_gpus = get_world_size()
+    if is_train:
+        images_per_batch = cfg.SOLVER.IMS_PER_BATCH
+        assert (
+            images_per_batch % num_gpus == 0
+        ), "SOLVER.IMS_PER_BATCH ({}) must be divisible by the number "
+        "of GPUs ({}) used.".format(images_per_batch, num_gpus)
+        images_per_gpu = images_per_batch // num_gpus
+        shuffle = True
+        num_iters = cfg.SOLVER.MAX_ITER
+    else:
+        images_per_batch = cfg.TEST.IMS_PER_BATCH
+        assert (
+            images_per_batch % num_gpus == 0
+        ), "TEST.IMS_PER_BATCH ({}) must be divisible by the number "
+        "of GPUs ({}) used.".format(images_per_batch, num_gpus)
+        images_per_gpu = images_per_batch // num_gpus
+        shuffle = False if not is_distributed else True
+        num_iters = None
+        start_iter = 0
+
+    if images_per_gpu > 1:
+        logger = logging.getLogger(__name__)
+        # logger.warning(
+        #     "When using more than one image per GPU you may encounter "
+        #     "an out-of-memory (OOM) error if your GPU does not have "
+        #     "sufficient memory. If this happens, you can reduce "
+        #     "SOLVER.IMS_PER_BATCH (for training) or "
+        #     "TEST.IMS_PER_BATCH (for inference). For training, you must "
+        #     "also adjust the learning rate and schedule length according "
+        #     "to the linear scaling rule. See for example: "
+        #     "https://github.com/facebookresearch/Detectron/blob/master/configs/getting_started/tutorial_1gpu_e2e_faster_rcnn_R-50-FPN.yaml#L14"
+        # )
+
+    # group images which have similar aspect ratio. In this case, we only
+    # group in two cases: those with width / height > 1, and the other way around,
+    # but the code supports more general grouping strategy
+    aspect_grouping = [1] if cfg.DATALOADER.ASPECT_RATIO_GROUPING else []
+
+    paths_catalog = import_file(
+        "maskrcnn_benchmark.config.paths_catalog", cfg.PATHS_CATALOG, True
+    )
+    # print(cfg.PATHS_CATALOG)
+    DatasetCatalog = paths_catalog.DatasetCatalog
+    logger = logging.getLogger(__name__)
+    dataset_list = cfg.DATASETS.TRAIN
+    if not is_train:
+        a = np.arange(101)    
+        indices = np.delete(a, indices)
+    # print()
+    logger.info(f"At DATA LOADER indices are {indices}")
+
+    transforms = build_transforms(cfg, is_train)
+    datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train, cfg.DATASETS.STRATEGY, indices)
+
+    data_loaders = []
+    for dataset in datasets:
+        sampler = make_data_sampler(dataset, shuffle, is_distributed)
+        #TO DELETE THE LINE
+        # print("AD DATA SAMPLES", dataset.get_indices())
         batch_sampler = make_batch_data_sampler(
             dataset, sampler, aspect_grouping, images_per_gpu, num_iters, start_iter
         )

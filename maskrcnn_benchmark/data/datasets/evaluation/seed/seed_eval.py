@@ -14,6 +14,7 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
     # for the user to choose
     pred_boxlists = []
     gt_boxlists = []
+    scores_dict = {}
     stats = np.zeros(shape =(len(predictions), 4) )
     for image_id, prediction in enumerate(predictions):
         img_info = dataset.get_img_info(image_id)
@@ -21,8 +22,9 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
             continue
         image_width = img_info["width"]
         image_height = img_info["height"]
-        # id = img_info['id']
-        id = 0
+        id = img_info['id']
+        # id = 0
+        print(id)
         prediction = prediction.resize((image_width, image_height))
         pred_boxlists.append(prediction)
         # print("prediction:", prediction)
@@ -34,14 +36,24 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
         # print("gt_boxlist:", gt_boxlist)
         # print("gt_boxlist:", gt_boxlist.bbox)
         stats[image_id:] = count(gt_boxlist, prediction)
-        
+        #added for Al
+
+        scores_dict[id] = prediction.get_field("scores").numpy()
+
         if output_folder:
             np.save(os.path.join(output_folder, f"{id}_box_strat{dataset.get_strategy()}.npy"), prediction.bbox.numpy())
             np.save(os.path.join(output_folder, f"{id}_label_strat{dataset.get_strategy()}.npy"), prediction.get_field("labels").numpy())
             np.save(os.path.join(output_folder, f"{id}_score_strat{dataset.get_strategy()}.npy"), prediction.get_field("scores").numpy())
-            
-    error_seed = np.mean(np.abs(np.divide((stats[:, 1] - stats[:, 0]), stats[:, 1])))
-    error_rad = np.mean(np.abs(np.divide((stats[:, 3] - stats[:, 2]),  stats[:, 3])))
+    with np.errstate(divide='ignore'):
+        error_rad_arr = np.abs(np.divide((stats[:, 3] - stats[:, 2]),  stats[:, 3]))
+        error_rad_arr[np.isnan(error_rad_arr)] = 0.1
+        error_rad_arr[np.isinf(error_rad_arr)] = 0
+        error_rad = np.mean(error_rad_arr)
+
+        error_seed_arr = np.abs(np.divide((stats[:, 1] - stats[:, 0]), stats[:, 1]))     
+        error_seed_arr[np.isnan(error_seed_arr)] = 0.1        
+        error_seed_arr[np.isinf(error_seed_arr)] = 0
+        error_seed = np.mean(error_seed_arr)
 
     if output_folder:
         np.save(os.path.join(output_folder, f"error_seed_strat{dataset.get_strategy()}.npy"), error_seed)
@@ -50,10 +62,10 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
     result = eval_detection_seed(
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
-        iou_thresh=0.4,
+        iou_thresh=0.5,
         use_07_metric=True,
     )
-    result_str = "mAP: {:.4f}\n".format(result["map"])
+    result_str = "mAP: {:.4f}\n, MAE for seed is: {:.4f}\n, MAE for radical is: {:.4f}\n".format(result["map"], error_seed, error_rad)
     for i, ap in enumerate(result["ap"]):
         if i == 0:  # skip background
             continue
@@ -64,7 +76,7 @@ def do_seed_evaluation(dataset, predictions, output_folder, logger):
     if output_folder:
         with open(os.path.join(output_folder, "result.txt"), "w") as fid:
             fid.write(result_str)
-    return result["map"], error_seed, error_rad
+    return result["map"], error_seed, error_rad, scores_dict
 
 
 def eval_detection_seed(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):

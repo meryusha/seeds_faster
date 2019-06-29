@@ -50,6 +50,7 @@ def get_ground_bb(xml_name):
 	# image = cv2.imread(image_name)
 	# # cv2.resize(image, (image.shape[1]//2, image.shape[0]//2))
 	# image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+	print(xml_name)
 	root = xml.etree.ElementTree.parse(xml_name).getroot()
 #     gernimated_string = 'germinated'
 #     non_gernimated_string = 'non-germinated'
@@ -60,6 +61,7 @@ def get_ground_bb(xml_name):
 	return b_boxes, labels
 
 def get_ground_bb_2(xml_name_seed, xml_name_rad , override = True):  
+	print(xml_name_rad)
 	root_seed = xml.etree.ElementTree.parse(xml_name_seed).getroot()
 	objects_seed = root_seed.findall('object')
 

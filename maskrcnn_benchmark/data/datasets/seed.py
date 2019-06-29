@@ -27,24 +27,44 @@ class SeedDataset(torch.utils.data.Dataset):
         "radical"
     )
 
-    def __init__(self, root_dir, split="", strategy = 1, transforms=None):
-        # as you would do normally
+    def __init__(self, root_dir, split="", strategy = 1,  transforms=None, indices = None):
+       #NO AL
         self.split = split
-        self.nb_data = 127
-        if ("train".upper() in self.split.upper()):
-            self.starting_sample = 1
-            self.number_sample = int( np.floor(self.nb_data * 0.8) )
-        # elif ("val".upper() in self.split.upper()):
-        #     self.starting_sample = int( np.floor(self.nb_data * 0.6) )
-        #     self.number_sample = int(np.floor(self.nb_data * 0.2))
-        elif ("test".upper() in self.split.upper()):
-            self.starting_sample = int(np.floor(self.nb_data * 0.8))  + 1
-            # self.number_sample = int(np.floor(self.nb_data * 0.2))
-            self.number_sample = self.nb_data - self.starting_sample + 1
-        else:
-            self.starting_sample = 1
-            self.number_sample = self.nb_data
+        self.max_data = 0
+        self.indices = indices
+        # print("INDE", self.indices)
+        if self.indices is None:
+        # as you would do normally
+            self.nb_data = 161
+            if ("train".upper() in self.split.upper()):
+                self.starting_sample = 1
+                self.number_sample = int( np.floor(self.nb_data * 0.8) )
+            # elif ("val".upper() in self.split.upper()):
+            #     self.starting_sample = int( np.floor(self.nb_data * 0.6) )
+            #     self.number_sample = int(np.floor(self.nb_data * 0.2))
+            elif ("test".upper() in self.split.upper()):
+                self.starting_sample = int(np.floor(self.nb_data * 0.8))  + 1
+                # self.number_sample = int(np.floor(self.nb_data * 0.2))
+                self.number_sample = self.nb_data - self.starting_sample + 1
+            else:
+                self.starting_sample = 1
+                self.number_sample = self.nb_data
 
+        else: 
+            if len(self.indices) > 0:
+                self.indices = np.sort(self.indices)
+                # print("IM not none", self.indices)
+                self.max_data = len(indices) 
+                self.nb_data = 127
+                if ("train".upper() in self.split.upper()):
+                    self.starting_sample = 0
+                    self.number_sample = self.max_data
+                elif ("test".upper() in self.split.upper()):
+                    self.starting_sample = int(np.floor(self.nb_data * 0.8))  + 1
+                    # self.number_sample = int(np.floor(self.nb_data * 0.2))
+                    self.number_sample = self.nb_data - self.starting_sample + 1
+
+       
         self.root_dir = root_dir
         self.strategy = strategy
         self.transforms = transforms
@@ -73,9 +93,12 @@ class SeedDataset(torch.utils.data.Dataset):
                 labels.append(ground_labels )
         return boxes, labels
 
-    def __getitem__(self, idx):       
-        num = idx  + self.starting_sample
-        # print(num)
+    def __getitem__(self, idx):
+        if self.indices is None:       
+            num = idx  + self.starting_sample
+        else:
+            num = self.indices[idx] + 1
+        # print('ind', self.indices)
         # labels = []
         boxes = self.b_boxes[num - 1]
         labels_xml = self.labels[num - 1]
@@ -101,11 +124,13 @@ class SeedDataset(torch.utils.data.Dataset):
         # boxlist.add_field("masks", masks)
         boxlist.add_field("labels", labels)
         boxlist.add_field("difficult", difficult)
+        
+
 
         if self.transforms:
             image, boxlist = self.transforms(image, boxlist)
         # return the image, the boxlist and the idx in your dataset
-        return image, boxlist, idx
+        return image, boxlist, num
 
     def __len__(self):
         return self.number_sample
@@ -116,19 +141,27 @@ class SeedDataset(torch.utils.data.Dataset):
 
     def get_strategy(self):
         return self.strategy
-        
+
+    def get_indices(self):
+        return self.indices
+
     def get_img_info(self, idx):
         # get img_height and img_width. This is used if
         # we want to split the batches according to the aspect ratio
         # of the image, as it can be more efficient than loading the
         # image from disk
-        num  = idx + self.starting_sample
+        if self.indices is None:     
+            # print("IAM NONE")  
+            num = idx  + self.starting_sample
+        else:
+            num = self.indices[idx] + 1
+        # print(self.indices, 'ind')
         if self.strategy == 1:
             image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds/image{num:03d}.jpg'
         else:
             image_name = f'/home/ramazam/Documents/Spring 2019/CV/seeds_proj/seeds_2/image{num:03d}.jpg'
         image = Image.open(image_name).convert('RGB')
-        return {"height": image.size[1], "width": image.size[0], "name": image_name, "id": num}
+        return {"height": image.size[1], "width": image.size[0], "name": image_name, "id": num - 1}
 
     def map_class_id_to_class_name(self, class_id):
         if self.strategy == 1:    
@@ -270,4 +303,4 @@ class SeedDataset(torch.utils.data.Dataset):
 #         if self.strategy == 1:    
 #              return SeedDataset.CLASSES_STRAT1[class_id]
 #         return SeedDataset.CLASSES_STRAT2[class_id]
-# #python ./tools/train_net.py --config-file /home/ramazam/Documents/maskrcnn-benchmark/configs/seed/e2e_faster_rcnn_R_50_C4_1x_seed.yaml
+# #python ./tools/train_net.py --config-file /home/ramazam/Documents/maskrcnn-benchmark/configs/seed/e2e_faster_rcnn_R_50_C4_1x_seed_strat2 --active-ler.yaml
