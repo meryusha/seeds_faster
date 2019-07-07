@@ -29,7 +29,7 @@ class SeedPredict(object):
         self,
         cfg,
         confidence_threshold=0.7,
-        min_image_size=224,
+        min_image_size=800,
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
@@ -91,6 +91,17 @@ class SeedPredict(object):
         
         image = cv2.imread(image_path)
         predictions = self.compute_prediction(image)
+        image_copy = image.copy()
+        boxes = predictions.bbox.numpy()
+        print( predictions.get_field("scores"))
+        #Checking
+        for box in boxes:
+            minX = box[0]
+            minY = box[1]
+            maxX = box[2]
+            maxY = box[3]
+            cv2.rectangle(image_copy, ( minX, minY), (maxX, maxY), 0, 4)
+        cv2.imwrite('image.jpg', image_copy)
         # top_predictions = self.select_top_predictions(predictions)
         # predictions = []
         # result = image.copy()
@@ -174,3 +185,7 @@ class SeedPredict(object):
             )
 
         return image
+    def map_class_id_to_class_name(self, class_id):
+        if self.strategy == 1:    
+             return SeedDataset.CLASSES_STRAT1[class_id]
+        return SeedDataset.CLASSES_STRAT2[class_id]

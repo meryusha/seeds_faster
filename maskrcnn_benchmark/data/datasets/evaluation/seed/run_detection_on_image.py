@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--min-image-size",
         type=int,
-        default=224,
+        default=800,
         help="Smallest size of the image to feed to the model. "
             "Model was trained with 800, which gives best results",
     )
