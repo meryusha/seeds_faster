@@ -185,7 +185,7 @@ class SeedPredict(object):
             )
 
         return image
-    def map_class_id_to_class_name(self, class_id):
-        if self.strategy == 1:    
-             return SeedDataset.CLASSES_STRAT1[class_id]
-        return SeedDataset.CLASSES_STRAT2[class_id]
+        
+    def map_class_id_to_class_name(self, class_id):  
+        return self.CLASSES_STRAT2[class_id]
+       
