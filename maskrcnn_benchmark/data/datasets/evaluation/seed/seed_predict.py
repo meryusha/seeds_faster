@@ -8,7 +8,7 @@ from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.structures.image_list import to_image_list
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.utils import cv2_util
-
+import numpy as np
 
 class SeedPredict(object):
     CLASSES_STRAT1 = (
@@ -78,10 +78,11 @@ class SeedPredict(object):
         )
         return transform
 
-    def run_on_opencv_image(self, image_path):
+    def run_on_opencv_image(self, image_bytes):
         """
         Arguments:
             image_path (String): path to an image
+            image_bytes
 
         Returns:
             prediction (BoxList): the detected objects. Additional information
@@ -89,19 +90,22 @@ class SeedPredict(object):
                 the BoxList via `prediction.fields()`
         """
         
-        image = cv2.imread(image_path)
+        # image = cv2.imread(image_path)
+        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
+        cv2.imwrite('image.jpg', image)
         predictions = self.compute_prediction(image)
-        image_copy = image.copy()
-        boxes = predictions.bbox.numpy()
-        print( predictions.get_field("scores"))
+
+        # image_copy = image.copy()
+        # boxes = predictions.bbox.numpy()
+        # print( predictions.get_field("scores"))
         #Checking
-        for box in boxes:
-            minX = box[0]
-            minY = box[1]
-            maxX = box[2]
-            maxY = box[3]
-            cv2.rectangle(image_copy, ( minX, minY), (maxX, maxY), 0, 4)
-        cv2.imwrite('image.jpg', image_copy)
+        # for box in boxes:
+        #     minX = box[0]
+        #     minY = box[1]
+        #     maxX = box[2]
+        #     maxY = box[3]
+            # cv2.rectangle(image_copy, ( minX, minY), (maxX, maxY), 0, 4)
+        # cv2.imwrite('image.jpg', image_copy)
         # top_predictions = self.select_top_predictions(predictions)
         # predictions = []
         # result = image.copy()
